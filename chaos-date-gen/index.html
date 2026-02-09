@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CHAOS DATE GEN — v4.0</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --red: #FF1744;
+            --red-glow: rgba(255, 23, 68, 0.4);
+            --lime: #CCFF00;
+            --lime-glow: rgba(204, 255, 0, 0.3);
+            --bg: #0A0A0A;
+            --surface: #111111;
+            --surface-2: #1A1A1A;
+            --text: #F5F5F0;
+            --text-dim: #888880;
+            --border: rgba(255,255,255,0.08);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Space Mono', monospace;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Grain overlay */
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none; z-index: 9999;
+        }
+
+        /* Floating background blobs */
+        .bg-blob {
+            position: fixed; border-radius: 50%; filter: blur(120px);
+            pointer-events: none; z-index: 0;
+            animation: blobDrift 20s ease-in-out infinite alternate;
+        }
+        .bg-blob-1 { width: 500px; height: 500px; background: var(--red); opacity: 0.07; top: -10%; left: -10%; }
+        .bg-blob-2 { width: 400px; height: 400px; background: var(--lime); opacity: 0.05; bottom: -5%; right: -5%; animation-delay: -7s; }
+        .bg-blob-3 { width: 300px; height: 300px; background: #6600FF; opacity: 0.06; top: 50%; left: 60%; animation-delay: -14s; }
+
+        @keyframes blobDrift {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(40px, -30px) scale(1.1); }
+            100% { transform: translate(-20px, 50px) scale(0.95); }
+        }
+
+        /* Layout */
+        .app-shell {
+            position: relative; z-index: 1;
+            max-width: 680px; margin: 0 auto;
+            padding: 30px 20px 60px;
+        }
+
+        /* Header */
+        .header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 0 30px; border-bottom: 1px solid var(--border);
+            margin-bottom: 40px;
+        }
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800; font-size: 0.85rem;
+            letter-spacing: 4px; text-transform: uppercase;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .logo-dot {
+            width: 8px; height: 8px; background: var(--red);
+            border-radius: 50%; display: inline-block;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 var(--red-glow); }
+            50% { opacity: 0.7; box-shadow: 0 0 0 8px transparent; }
+        }
+        .version-tag {
+            font-size: 0.65rem; color: var(--text-dim);
+            border: 1px solid var(--border); padding: 4px 10px;
+            border-radius: 4px; letter-spacing: 2px;
+        }
+
+        /* Capture card */
+        #captureArea {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Top strip with names */
+        .names-strip {
+            display: flex; align-items: center; justify-content: center; gap: 40px;
+            padding: 28px 30px;
+            background: linear-gradient(135deg, rgba(255,23,68,0.06), rgba(204,255,0,0.04));
+            border-bottom: 1px solid var(--border);
+            position: relative;
+        }
+        .names-strip::after {
+            content: '❤️‍🔥';
+            position: absolute;
+            font-size: 1.6rem;
+            background: var(--surface);
+            padding: 6px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,23,68,0.3);
+            box-shadow: 0 0 20px var(--red-glow);
+            line-height: 1;
+        }
+
+        .person-chip {
+            display: flex; align-items: center; gap: 12px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 16px; padding: 10px 18px 10px 10px;
+            min-width: 160px;
+        }
+        .person-chip.right { flex-direction: row-reverse; padding: 10px 10px 10px 18px; text-align: right; }
+
+        .person-chip img {
+            width: 48px; height: 48px; border-radius: 12px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .person-info { display: flex; flex-direction: column; }
+        .person-name {
+            font-family: 'Syne', sans-serif;
+            font-weight: 700; font-size: 0.95rem;
+            white-space: nowrap;
+        }
+
+        /* Activity badge */
+        .activity-section {
+            padding: 28px 30px 0;
+        }
+        .activity-label {
+            font-size: 0.6rem; letter-spacing: 3px;
+            text-transform: uppercase; color: var(--text-dim);
+            margin-bottom: 10px;
+        }
+        .activity-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            font-family: 'Syne', sans-serif;
+            font-weight: 700; font-size: 1rem;
+            background: var(--red);
+            color: white;
+            padding: 10px 22px;
+            border-radius: 10px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            box-shadow: 0 4px 20px var(--red-glow);
+        }
+        .activity-badge::before { content: '⚡'; }
+
+        /* Story */
+        .story-section {
+            padding: 24px 30px;
+        }
+        .story-text {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1.25rem; line-height: 1.85;
+            font-weight: 300; font-style: italic;
+            color: rgba(245,245,240,0.85);
+            min-height: 140px;
+            position: relative;
+        }
+        .story-text::before {
+            content: '"';
+            font-family: 'Syne', sans-serif;
+            font-size: 4rem; font-weight: 800;
+            color: var(--red);
+            opacity: 0.3;
+            position: absolute;
+            top: -20px; left: -5px;
+            line-height: 1;
+            font-style: normal;
+        }
+
+        /* Score section */
+        .score-section {
+            padding: 0 30px 20px;
+        }
+        .score-rings-row {
+            display: flex; align-items: center; justify-content: center;
+            gap: 40px; margin-bottom: 20px;
+        }
+        .score-ring {
+            width: 120px; height: 120px;
+            position: relative; flex-shrink: 0;
+        }
+        .score-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+        .score-ring .track { fill: none; stroke: var(--surface-2); stroke-width: 5; }
+        .score-ring .progress {
+            fill: none; stroke: var(--red); stroke-width: 5;
+            stroke-linecap: round;
+            stroke-dasharray: 314; stroke-dashoffset: 314;
+            transition: stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.5s ease;
+        }
+        .score-value {
+            position: absolute; inset: 0;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+        }
+        .score-number {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800; font-size: 1.8rem;
+            line-height: 1; letter-spacing: -1px;
+        }
+        .score-label {
+            font-size: 0.5rem; text-transform: uppercase;
+            letter-spacing: 2px; color: var(--text-dim); margin-top: 4px;
+        }
+
+        .score-meta {
+            display: flex; gap: 0;
+        }
+        .meta-row {
+            flex: 1;
+            display: flex; flex-direction: column; align-items: center;
+            gap: 4px; padding: 12px 10px;
+            border-right: 1px solid var(--border);
+        }
+        .meta-row:last-child { border-right: none; }
+        .meta-key { color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; font-size: 0.55rem; }
+        .meta-val { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.8rem; }
+
+        /* Danger meter */
+        .danger-bar-wrap {
+            padding: 0 30px 28px;
+        }
+        .danger-label-row {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 8px;
+        }
+        .danger-label-row span {
+            font-size: 0.6rem; text-transform: uppercase;
+            letter-spacing: 2px; color: var(--text-dim);
+        }
+        .danger-level {
+            font-family: 'Syne', sans-serif; font-weight: 700;
+            font-size: 0.7rem; color: var(--red);
+        }
+        .danger-track {
+            height: 6px; background: var(--surface-2);
+            border-radius: 3px; overflow: hidden;
+        }
+        .danger-fill {
+            height: 100%; width: 0%;
+            background: linear-gradient(90deg, var(--lime), #FFAB00, var(--red));
+            border-radius: 3px;
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Footer watermark */
+        .card-footer {
+            padding: 16px 30px;
+            border-top: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .watermark {
+            font-size: 0.55rem; color: var(--text-dim);
+            letter-spacing: 3px; text-transform: uppercase;
+        }
+        .gen-count {
+            font-size: 0.6rem; color: var(--text-dim);
+            font-family: 'Space Mono', monospace;
+        }
+
+        /* Controls below card */
+        .controls {
+            display: flex; gap: 10px; margin-top: 24px;
+        }
+
+        .btn {
+            border: none; cursor: pointer;
+            font-family: 'Syne', sans-serif;
+            font-weight: 700; font-size: 0.85rem;
+            letter-spacing: 1px; text-transform: uppercase;
+            border-radius: 14px;
+            transition: all 0.2s ease;
+            position: relative; overflow: hidden;
+        }
+        .btn::after {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(180deg, rgba(255,255,255,0.1), transparent);
+            pointer-events: none;
+        }
+
+        .btn-primary {
+            flex: 1;
+            padding: 20px 30px;
+            background: var(--text);
+            color: var(--bg);
+        }
+        .btn-primary:hover {
+            background: var(--lime);
+            color: var(--bg);
+            box-shadow: 0 8px 30px var(--lime-glow);
+            transform: translateY(-2px);
+        }
+        .btn-primary:active { transform: translateY(0); }
+
+        .btn-secondary {
+            padding: 20px;
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover {
+            background: var(--surface-2);
+            border-color: rgba(255,255,255,0.2);
+        }
+
+        .btn-icon {
+            width: 58px; height: 58px;
+            display: flex; align-items: center; justify-content: center;
+            padding: 0; font-size: 1.2rem;
+        }
+
+        /* History ticker */
+        .history-section {
+            margin-top: 30px;
+            border-top: 1px solid var(--border);
+            padding-top: 20px;
+        }
+        .history-label {
+            font-size: 0.6rem; color: var(--text-dim);
+            letter-spacing: 3px; text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+        .history-scroll {
+            display: flex; gap: 8px; overflow-x: auto;
+            padding-bottom: 8px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--surface-2) transparent;
+        }
+        .history-chip {
+            flex-shrink: 0;
+            padding: 8px 14px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            display: flex; align-items: center; gap: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .history-chip:hover {
+            border-color: rgba(255,255,255,0.2);
+            color: var(--text);
+        }
+        .history-chip .hc-score {
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+        }
+
+        /* Animate-in */
+        .card-enter { animation: cardIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes cardIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .shake { animation: shake 0.4s ease; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-6px) rotate(-0.5deg); }
+            40% { transform: translateX(6px) rotate(0.5deg); }
+            60% { transform: translateX(-4px); }
+            80% { transform: translateX(4px); }
+        }
+
+        /* Responsive */
+        @media (max-width: 520px) {
+            .app-shell { padding: 16px 12px 40px; }
+            .names-strip { flex-direction: column; gap: 10px; padding: 20px; }
+            .names-strip::after { display: none; }
+            .person-chip, .person-chip.right { flex-direction: row; text-align: left; padding: 10px 16px 10px 10px; min-width: unset; width: 100%; }
+            .score-rings-row { gap: 20px; }
+            .score-ring { width: 100px; height: 100px; }
+            .score-number { font-size: 1.5rem !important; }
+            .score-section { padding-left: 20px; padding-right: 20px; }
+            .activity-section, .story-section, .score-section, .danger-bar-wrap { padding-left: 20px; padding-right: 20px; }
+            .card-footer { padding: 14px 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="bg-blob bg-blob-1"></div>
+<div class="bg-blob bg-blob-2"></div>
+<div class="bg-blob bg-blob-3"></div>
+
+<div class="app-shell">
+
+    <!-- Header -->
+    <div class="header">
+        <div class="logo">
+            <span class="logo-dot"></span>
+            CHAOS DATE GEN
+        </div>
+        <div class="version-tag">V4.0</div>
+    </div>
+
+    <!-- Main Card -->
+    <div id="captureArea" class="card-enter">
+        <!-- Names -->
+        <div class="names-strip">
+            <div class="person-chip">
+                <img id="hostA" src="hosts/Valentina.png" alt="Person A">
+                <div class="person-info">
+                    <div class="person-name" id="nameA">Valentina</div>
+                </div>
+            </div>
+            <div class="person-chip right">
+                <img id="hostB" src="hosts/Blaze.png" alt="Person B">
+                <div class="person-info">
+                    <div class="person-name" id="nameB">Blaze</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity -->
+        <div class="activity-section">
+            <div class="activity-label">Tonight's Activity</div>
+            <div class="activity-badge" id="activityBadge">The Chaos Engine</div>
+        </div>
+
+        <!-- Story -->
+        <div class="story-section">
+            <div class="story-text" id="storyText">
+                Welcome to the disaster factory. Hit generate to see how two hopeless souls collide on the messiest Valentine's night of their lives. No refunds. No regrets. Mostly.
+            </div>
+        </div>
+
+        <!-- Score -->
+        <div class="score-section">
+            <div class="score-rings-row">
+                <div class="score-ring">
+                    <svg viewBox="0 0 110 110">
+                        <circle class="track" cx="55" cy="55" r="50"/>
+                        <circle class="progress" id="scoreArc" cx="55" cy="55" r="50"/>
+                    </svg>
+                    <div class="score-value">
+                        <div class="score-number" id="scoreNum">—</div>
+                        <div class="score-label">2nd Date</div>
+                    </div>
+                </div>
+                <div class="score-ring">
+                    <svg viewBox="0 0 110 110">
+                        <circle class="track" cx="55" cy="55" r="50"/>
+                        <circle class="progress" id="nightcapArc" cx="55" cy="55" r="50"/>
+                    </svg>
+                    <div class="score-value">
+                        <div class="score-number" id="nightcapNum">—</div>
+                        <div class="score-label">Nightcap</div>
+                    </div>
+                </div>
+            </div>
+            <div class="score-meta">
+                <div class="meta-row">
+                    <span class="meta-key">Vibe Check</span>
+                    <span class="meta-val" id="vibeVal">Pending…</span>
+                </div>
+                <div class="meta-row">
+                    <span class="meta-key">Red Flags</span>
+                    <span class="meta-val" id="flagVal">—</span>
+                </div>
+                <div class="meta-row">
+                    <span class="meta-key">Drinks Deep</span>
+                    <span class="meta-val" id="bailVal">—</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Danger Bar -->
+        <div class="danger-bar-wrap">
+            <div class="danger-label-row">
+                <span>Spice Level</span>
+                <span class="danger-level" id="dangerLevelText">STANDBY</span>
+            </div>
+            <div class="danger-track">
+                <div class="danger-fill" id="dangerFill"></div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="card-footer">
+            <div class="watermark">chaos-date-gen.exe</div>
+            <div class="gen-count" id="genCount">#000</div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+        <button class="btn btn-primary" id="genBtn" onclick="generateChaos()">
+            ⚡ GENERATE FATE
+        </button>
+        <button class="btn btn-secondary btn-icon" onclick="takeScreenshot()" title="Screenshot">
+            📸
+        </button>
+        <button class="btn btn-secondary btn-icon" onclick="shareChaos()" title="Copy to clipboard">
+            📋
+        </button>
+    </div>
+
+    <!-- History -->
+    <div class="history-section" id="historySection" style="display:none;">
+        <div class="history-label">Recent Disasters</div>
+        <div class="history-scroll" id="historyScroll"></div>
+    </div>
+</div>
+
+<a id="downloadLink" style="display:none;"></a>
+
+<script>
+    let hosts = [];
+    let hostsLoaded = false;
+
+    // Load hosts from hosts.json (generated from PNG filenames in /hosts)
+    async function loadHosts() {
+        try {
+            const res = await fetch('hosts.json');
+            const names = await res.json();
+            hosts = names.map(n => ({ name: n }));
+            hostsLoaded = true;
+            shuffleDeck();
+        } catch (e) {
+            // Fallback if hosts.json missing
+            console.warn('hosts.json not found — using defaults. Run generate-hosts.sh to create it.');
+            hosts = [
+                { name: "Valentina" }, { name: "Blaze" }, { name: "Scarlett" },
+                { name: "Dante" }, { name: "Moxie" }, { name: "Raven" },
+                { name: "Knox" }, { name: "Delilah" }, { name: "Jagger" },
+                { name: "Lux" }, { name: "Romeo" }, { name: "Jezebel" },
+                { name: "Cruz" }, { name: "Sable" }, { name: "Phoenix" }, { name: "Velvet" }
+            ];
+            hostsLoaded = true;
+            shuffleDeck();
+        }
+    }
+
+    function getHostImage(name) {
+        return `hosts/${name}.png`;
+    }
+
+    const activities = [
+        "Skinny Dipping in a Hotel Fountain",
+        "Blindfolded Wine Tasting Gone Wrong",
+        "Strip Poker at a Dinner Party",
+        "Making Out in a Walk-In Freezer",
+        "Couples Massage That Got Way Too Loud",
+        "Steamy Hot Tub Argument",
+        "Flirting Their Way Out of a Speeding Ticket",
+        "Body Shot Olympics at a Dive Bar",
+        "Recreating a Romance Movie (Badly)",
+        "Handcuffed Together for 24 Hours",
+        "Truth or Dare With Zero Boundaries",
+        "Sneaking Into a Rooftop Pool at Midnight",
+        "Dirty Charades With Strangers",
+        "Accidentally Sexting the Group Chat",
+        "Role-Playing as Each Other's Exes",
+        "Whipped Cream Fight in the Kitchen",
+        "Karaoke Duet of 'Careless Whisper'",
+        "Champagne-Fueled Confessions at 3AM",
+        "Getting Matching Tattoos (On a Dare)",
+        "A Candlelit Dinner That Set Off the Sprinklers"
+    ];
+
+    const outcomes = [
+        "Absolute filth. {host} suggested {activity} like it was no big deal. Three drinks in, boundaries were a distant memory. They closed down the bar, stole a bottle of champagne, and woke up in a hotel room with zero regrets and matching hickeys.",
+        "Dangerously electric. {activity} started as a joke, but the eye contact got way too intense. {host} whispered something unprintable, and now they're both pretending they didn't already book a second date before the first one ended.",
+        "A hot mess in the best way. {host} showed up looking indecent and immediately proposed {activity}. Things escalated. Someone's shirt was lost. The Uber driver gave them a slow clap. They've been texting nonstop since.",
+        "Started classy. Ended filthy. The plan was a quiet evening, but {activity} changed everything. {host} did that thing with their voice and suddenly it was 4AM, the candles had melted everywhere, and neither of them could find their shoes.",
+        "Chaotic sexual tension from minute one. {activity} was just foreplay with extra steps. {host} kept 'accidentally' touching their hand. By dessert they were sharing a single chair. The waiter asked them to leave. They didn't care.",
+        "Criminally flirty. {host} turned {activity} into a full seduction. There was lip biting. There was whispering. There was a moment in the elevator that would've gotten them arrested in most countries. Valentine's Day: dominated.",
+        "Unhinged romance. {activity} somehow ended with {host} carrying them through a rainstorm back to the car. Soaking wet. Laughing. They kissed in the parking lot like it was the last scene of a movie. Disgusting. Beautiful. 10/10.",
+        "Nobody planned for it to go this hard. {host} wore that outfit, suggested {activity}, and it was over. The sexual tension could've powered a city block. They haven't defined the relationship, but they've definitely defined the chemistry.",
+        "Spectacularly messy. {activity} devolved into a confessional. {host} admitted to stalking their Instagram since 2019. Instead of being weird, it was somehow the hottest thing ever said. They made out in the car for 45 minutes.",
+        "The kind of night people lie about having. {host} and their date turned {activity} into something borderline legendary. There were roses. There was tequila. There was a moment on the dance floor that made everyone else uncomfortable. Perfect Valentine's."
+    ];
+
+    const vibes = ["Dangerously Horny", "Unhinged Romance", "Main Character Energy", "Toxic Butterflies", "Down Bad", "Feral Attraction", "Filthy Chemistry", "Sinful Tension", "Drunk in Love", "Irresponsibly Hot"];
+    const dangerLevels = ["LUKEWARM", "FLIRTY", "STEAMY", "SCANDALOUS", "FILTHY", "UNRATED", "CALL THE FIRE DEPT"];
+
+    let deck = [];
+    let genNumber = 0;
+    let history = [];
+
+    function shuffleDeck() {
+        deck = [];
+        for (let h of hosts) {
+            for (let a of activities) {
+                for (let o of outcomes) {
+                    deck.push({ h, a, o });
+                }
+            }
+        }
+        for (let i = deck.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [deck[i], deck[j]] = [deck[j], deck[i]];
+        }
+    }
+
+    function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+    function generateChaos() {
+        if (deck.length === 0) shuffleDeck();
+
+        const item = deck.pop();
+        const score = Math.floor(Math.random() * 101);
+        genNumber++;
+
+        // Pick second host
+        let hostB;
+        do { hostB = pick(hosts); } while (hostB.name === item.h.name);
+
+        // Update avatars & names
+        document.getElementById('hostA').src = getHostImage(item.h.name);
+        document.getElementById('hostB').src = getHostImage(hostB.name);
+        document.getElementById('nameA').textContent = item.h.name;
+        document.getElementById('nameB').textContent = hostB.name;
+
+        // Activity
+        document.getElementById('activityBadge').textContent = item.a;
+
+        // Story
+        let story = item.o.replace("{host}", item.h.name).replace("{activity}", item.a.toLowerCase());
+        document.getElementById('storyText').textContent = story;
+
+        // Score ring
+        const arc = document.getElementById('scoreArc');
+        const circumference = 2 * Math.PI * 50; // 314.16
+        const offset = circumference - (score / 100) * circumference;
+        arc.style.strokeDashoffset = offset;
+        arc.style.stroke = score > 60 ? 'var(--lime)' : score > 30 ? '#FFAB00' : 'var(--red)';
+
+        const scoreNum = document.getElementById('scoreNum');
+        scoreNum.textContent = score + '%';
+        scoreNum.style.color = score > 60 ? 'var(--lime)' : score > 30 ? '#FFAB00' : 'var(--red)';
+
+        // Nightcap ring
+        const nightcapScore = Math.floor(Math.random() * 101);
+        const nightcapArc = document.getElementById('nightcapArc');
+        const ncOffset = circumference - (nightcapScore / 100) * circumference;
+        nightcapArc.style.strokeDashoffset = ncOffset;
+        nightcapArc.style.stroke = nightcapScore > 60 ? '#FF69B4' : nightcapScore > 30 ? '#C850C0' : 'var(--red)';
+
+        const nightcapNum = document.getElementById('nightcapNum');
+        nightcapNum.textContent = nightcapScore + '%';
+        nightcapNum.style.color = nightcapScore > 60 ? '#FF69B4' : nightcapScore > 30 ? '#C850C0' : 'var(--red)';
+
+        // Meta stats
+        document.getElementById('vibeVal').textContent = pick(vibes);
+        const flags = Math.floor(Math.random() * 13) + 1;
+        document.getElementById('flagVal').textContent = '🚩'.repeat(Math.min(flags, 5)) + (flags > 5 ? ` +${flags - 5}` : '');
+        const drinks = Math.floor(Math.random() * 12) + 2;
+        document.getElementById('bailVal').textContent = drinks + ' deep';
+
+        // Danger bar
+        const dangerPct = Math.floor(Math.random() * 101);
+        document.getElementById('dangerFill').style.width = dangerPct + '%';
+        const dangerIdx = Math.min(Math.floor(dangerPct / 15), dangerLevels.length - 1);
+        const dangerText = document.getElementById('dangerLevelText');
+        dangerText.textContent = dangerLevels[dangerIdx];
+        dangerText.style.color = dangerPct > 70 ? 'var(--red)' : dangerPct > 40 ? '#FFAB00' : 'var(--lime)';
+
+        // Gen count
+        document.getElementById('genCount').textContent = '#' + String(genNumber).padStart(3, '0');
+
+        // Shake animation
+        const card = document.getElementById('captureArea');
+        card.classList.remove('shake');
+        void card.offsetWidth;
+        card.classList.add('shake');
+
+        // History
+        history.unshift({ activity: item.a, score, hostA: item.h.name, hostB: hostB.name });
+        if (history.length > 20) history.pop();
+        renderHistory();
+    }
+
+    function renderHistory() {
+        const section = document.getElementById('historySection');
+        const scroll = document.getElementById('historyScroll');
+        section.style.display = 'block';
+        scroll.innerHTML = '';
+        history.forEach((h, i) => {
+            const chip = document.createElement('div');
+            chip.className = 'history-chip';
+            const color = h.score > 60 ? 'var(--lime)' : h.score > 30 ? '#FFAB00' : 'var(--red)';
+            chip.innerHTML = `<span class="hc-score" style="color:${color}">${h.score}%</span> ${h.hostA} × ${h.hostB}`;
+            chip.title = h.activity;
+            scroll.appendChild(chip);
+        });
+    }
+
+    async function takeScreenshot() {
+        const btn = document.getElementById('genBtn');
+        btn.textContent = '📸 Capturing…';
+        try {
+            const el = document.getElementById('captureArea');
+            const canvas = await html2canvas(el, {
+                backgroundColor: '#0A0A0A',
+                scale: 2,
+                borderRadius: 24,
+                useCORS: true
+            });
+            const link = document.getElementById('downloadLink');
+            link.download = `chaos-date-${genNumber}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        } catch(e) { console.error(e); }
+        btn.textContent = '⚡ GENERATE FATE';
+    }
+
+    function shareChaos() {
+        const story = document.getElementById('storyText').textContent;
+        const score = document.getElementById('scoreNum').textContent;
+        const activity = document.getElementById('activityBadge').textContent;
+        const nameA = document.getElementById('nameA').textContent;
+        const nameB = document.getElementById('nameB').textContent;
+
+        const text = `🔥 VALENTINE'S CHAOS REPORT\n${nameA} × ${nameB}\n💋 ${activity}\n\n${story}\n\n❤️‍🔥 Second Date Odds: ${score}\n\n— chaos-date-gen.exe`;
+
+        navigator.clipboard.writeText(text).then(() => {
+            const btn = document.querySelectorAll('.btn-icon')[1];
+            btn.textContent = '✅';
+            setTimeout(() => btn.textContent = '📋', 1500);
+        }).catch(() => {});
+    }
+
+    // Load hosts on startup
+    loadHosts();
+</script>
+
+</body>
+</html>
